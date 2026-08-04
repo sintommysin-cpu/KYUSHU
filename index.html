@@ -131,6 +131,24 @@
   .entry-hotel{ font-size:11px; color:var(--teal); margin-top:4px; }
   .entry-hotel::before{ content:"🏨 "; }
 
+  /* ---- Packing checklist ---- */
+  .pack-progress{ width:100%; max-width:640px; margin-bottom:20px; }
+  .pack-progress-track{ width:100%; height:8px; border-radius:5px; background:var(--panel-edge); overflow:hidden; }
+  .pack-progress-fill{ height:100%; background:var(--green); border-radius:5px; transition:width .3s; }
+  .pack-progress-text{ font-size:11px; color:var(--muted); margin-top:6px; text-align:center; }
+  .pack-cat{ width:100%; max-width:640px; background:var(--panel); border:1px solid var(--panel-edge); border-radius:14px; padding:16px 20px; margin-bottom:12px; }
+  .pack-cat-title{ font-size:13px; font-weight:700; color:var(--teal); margin-bottom:10px; }
+  .pack-item{ display:flex; align-items:flex-start; gap:10px; padding:7px 0; cursor:pointer; user-select:none; }
+  .pack-check{
+    flex-shrink:0; width:20px; height:20px; border-radius:6px; border:2px solid var(--panel-edge);
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:transparent;
+    transition:background .15s, border-color .15s; margin-top:1px;
+  }
+  .pack-item.checked .pack-check{ background:var(--green); border-color:var(--green); color:#04211d; }
+  .pack-item.checked .pack-label{ color:var(--muted); text-decoration:line-through; }
+  .pack-label{ font-size:13px; line-height:1.4; }
+  .pack-note{ font-size:10px; color:var(--muted); opacity:.5; text-align:center; margin-top:4px; max-width:640px; }
+
   @media (max-width:380px){
     .flip{ min-width:46px; font-size:24px; padding:7px 3px; }
     .colon{ font-size:20px; }
@@ -148,6 +166,7 @@
   <button class="tab-btn" data-tab="quake">🌏 地震</button>
   <button class="tab-btn" data-tab="hotel">🏨 酒店</button>
   <button class="tab-btn" data-tab="itin">📋 行程</button>
+  <button class="tab-btn" data-tab="pack">🎒 打包</button>
 </nav>
 
 <!-- ===== 倒數 Tab ===== -->
@@ -190,6 +209,16 @@
   <div class="footnote" id="itinFootnote">資料來源: Google Sheet (即時讀取) · 撳分頁自動更新</div>
 </div>
 
+<!-- ===== 打包 Tab ===== -->
+<div class="tab-content" id="tab-pack">
+  <div class="pack-progress">
+    <div class="pack-progress-track"><div class="pack-progress-fill" id="packFill" style="width:0%"></div></div>
+    <div class="pack-progress-text" id="packText">0 / 0</div>
+  </div>
+  <div id="packGrid" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
+  <div class="pack-note">狀態儲存喺呢部裝置嘅瀏覽器度, 離線都得; 換部機或者清瀏覽器資料會reset</div>
+</div>
+
 <script src="data.js"></script>
 <script>
   // ================= 通用 =================
@@ -210,12 +239,15 @@
   const tabContents = document.querySelectorAll('.tab-content');
   let mapInited = false;
 
+  const ACTIVE_TAB_KEY = 'travel-hub-active-tab';
+
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      try{ localStorage.setItem(ACTIVE_TAB_KEY, btn.dataset.tab); }catch(e){}
 
       if (btn.dataset.tab === 'quake'){
         if (!mapInited){ initMap(); mapInited = true; loadEarthquakes(); }
@@ -226,6 +258,15 @@
       }
     });
   });
+
+  // 開頁時攞返上次揀緊嘅分頁
+  try{
+    const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
+    if (savedTab){
+      const targetBtn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
+      if (targetBtn) targetBtn.click();
+    }
+  }catch(e){}
 
   // ================= 倒數邏輯 =================
   function diffParts(ms){
@@ -419,8 +460,171 @@
   }
   renderHotels();
 
-  // ================= 自動 reload (讀返 data.js 最新內容) =================
-  setInterval(() => location.reload(), 60000);
+  // ================= 打包清單 =================
+  // 想加/減項目, 淨係喺下面陣列改就得, 每個item要有獨一嘅id(全份清單唔可以重複)
+  const PACKING_CATEGORIES = [
+    {
+      name: '🇨🇦 加拿大出境',
+      items: [
+        { id:'ca1', label:'你嘅護照 (效期6個月以上)' },
+        { id:'ca2', label:'老婆嘅護照 (效期6個月以上)' },
+        { id:'ca3', label:'機票確認 YVR→HKG (HX81, 兩人同行)' },
+        { id:'ca4', label:'你嘅工作許可/PR申請文件副本 (非公民身份, 返加拿大可能要用)' },
+        { id:'ca5', label:'老婆嘅身份/學生證明文件 (如適用)' },
+        { id:'ca6', label:'旅遊保險證明 (兩人)' },
+        { id:'ca7', label:'信用卡 (Roger Bank / RBC ION+)' },
+        { id:'ca8', label:'少量CAD現金備用' },
+        { id:'ca9', label:'兩人手機漫遊/eSIM安排好' },
+      ]
+    },
+    {
+      name: '🇯🇵 日本入境',
+      items: [
+        { id:'jp1', label:'Visit Japan Web - 你 (抵達前6小時內填, 攞QR code)' },
+        { id:'jp2', label:'Visit Japan Web - 老婆 (要分開登記, 各自QR code)' },
+        { id:'jp3', label:'你護照 (效期6個月以上)' },
+        { id:'jp4', label:'老婆護照 (效期6個月以上)' },
+        { id:'jp5', label:'回程/續程機票確認 (FUK→HKG)' },
+        { id:'jp6', label:'住宿證明 (第一晚: Hotel Oriental Express Fukuoka)' },
+        { id:'jp7', label:'足夠旅費證明 (信用卡/現金, 非強制但備妥)' },
+        { id:'jp8', label:'日圓現金 (郊區好多店淨收現金)' },
+      ]
+    },
+    {
+      name: '🚗 九州自駕相關 (淨係你, 因為老婆唔駕)',
+      items: [
+        { id:'dr1', label:'國際駕駛許可證 IDP (BCAA)' },
+        { id:'dr2', label:'BC Class 7N 正本駕駛執照 (要同IDP一齊用)' },
+        { id:'dr3', label:'租車確認單 (ORIX EC Prius, 博多祇園店取車)' },
+        { id:'dr4', label:'租車保險文件 (頂級保險 zero excess)' },
+        { id:'dr5', label:'離線地圖/導航App下載定 (山區可能冇信號)' },
+        { id:'dr6', label:'太陽眼鏡 (長途自駕用)' },
+      ]
+    },
+    {
+      name: '🇯🇵 日本出境 → 香港',
+      items: [
+        { id:'jpo1', label:'機票確認 FUK→HKG' },
+        { id:'jpo2', label:'退稅單據 (如有免稅購物)' },
+        { id:'jpo3', label:'租車還車確認 (博多市區還車)' },
+      ]
+    },
+    {
+      name: '🇭🇰 香港入境/逗留',
+      items: [
+        { id:'hk1', label:'你護照 (加拿大護照一般免簽證訪港)' },
+        { id:'hk2', label:'老婆護照' },
+        { id:'hk3', label:'HKD現金 或 Octopus card' },
+        { id:'hk4', label:'住宿地址 (荃灣)' },
+      ]
+    },
+    {
+      name: '🇨🇦 香港出境 → 返加拿大',
+      items: [
+        { id:'caret1', label:'機票確認 HKG→YVR' },
+        { id:'caret2', label:'你護照 + 工作許可/PR文件 (出發前再confirm返IRCC最新要求)' },
+        { id:'caret3', label:'老婆護照' },
+        { id:'caret4', label:'CBSA申報 (手信/煙酒有冇超過免稅額)' },
+        { id:'caret5', label:'ArriveCAN Advance Declaration (非強制, 可以慳返落機時間)' },
+      ]
+    },
+    {
+      name: '📷 攝影器材',
+      items: [
+        { id:'cam1', label:'Fujifilm X100S + 叉電器 + 電芯' },
+        { id:'cam2', label:'Sony A7III + 鏡頭 + 叉電器 + 電芯' },
+        { id:'cam3', label:'SD卡 (夠晒容量, 帶多張)' },
+        { id:'cam4', label:'鏡頭清潔套裝' },
+        { id:'cam5', label:'記憶卡讀卡器 (過機/備份用)' },
+        { id:'cam6', label:'相機防潮袋/乾燥劑' },
+      ]
+    },
+    {
+      name: '🧳 你嘅隨身',
+      items: [
+        { id:'d1', label:'個人常用藥物' },
+        { id:'d2', label:'尿袋 + 叉電線' },
+        { id:'d3', label:'轉換插頭 (日本Type A / 香港Type G)' },
+        { id:'d4', label:'雨具 (9月九州有機會落雨)' },
+        { id:'d5', label:'太陽眼鏡/防曬' },
+        { id:'d6', label:'換洗衫褲 (按日數執)' },
+      ]
+    },
+    {
+      name: '👗 老婆嘅隨身',
+      items: [
+        { id:'w1', label:'護膚品/化妝品' },
+        { id:'w2', label:'個人常用藥物' },
+        { id:'w3', label:'換洗衫褲' },
+        { id:'w4', label:'舒適行山鞋 (高千穗/阿蘇有行山路段)' },
+        { id:'w5', label:'個人尿袋/叉電線' },
+        { id:'w6', label:'太陽眼鏡/防曬' },
+      ]
+    },
+    {
+      name: '🏠 出發前屋企手尾',
+      items: [
+        { id:'h1', label:'安排隻貓餵食/探望' },
+        { id:'h2', label:'花園澆水安排' },
+        { id:'h3', label:'交帶鄰居/朋友幫手睇屋' },
+        { id:'h4', label:'停晒唔用緊嘅電器' },
+        { id:'h5', label:'通知銀行/信用卡海外用卡 (如需要)' },
+        { id:'h6', label:'CX-30 泊好 (如唔開去機場)' },
+      ]
+    },
+  ];
+
+  const PACK_STORAGE_KEY = 'kyushu-packing-checklist-v1';
+
+  function loadPackState(){
+    try{
+      const raw = localStorage.getItem(PACK_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+  function savePackState(state){
+    try{ localStorage.setItem(PACK_STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  function renderPacking(){
+    const state = loadPackState();
+    const grid = document.getElementById('packGrid');
+    grid.innerHTML = '';
+
+    let total = 0, checked = 0;
+
+    PACKING_CATEGORIES.forEach(cat => {
+      const catDiv = document.createElement('div');
+      catDiv.className = 'pack-cat';
+      let itemsHtml = '';
+      cat.items.forEach(it => {
+        total++;
+        const isChecked = !!state[it.id];
+        if (isChecked) checked++;
+        itemsHtml += `
+          <div class="pack-item ${isChecked ? 'checked' : ''}" data-id="${it.id}">
+            <div class="pack-check">✓</div>
+            <div class="pack-label">${it.label}</div>
+          </div>`;
+      });
+      catDiv.innerHTML = `<div class="pack-cat-title">${cat.name}</div>${itemsHtml}`;
+      grid.appendChild(catDiv);
+    });
+
+    document.getElementById('packFill').style.width = (total ? (checked/total*100) : 0) + '%';
+    document.getElementById('packText').textContent = `${checked} / ${total} 已執`;
+
+    grid.querySelectorAll('.pack-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.id;
+        const s = loadPackState();
+        s[id] = !s[id];
+        savePackState(s);
+        renderPacking();
+      });
+    });
+  }
+  renderPacking();
 
   // ================= 行程 (即時讀 Google Sheet) =================
   // 你張表: https://docs.google.com/spreadsheets/d/1PRykWKgheRs_eJI0non5rDBRS4q0rlVDUcQJMzUooOo
@@ -501,6 +705,9 @@
       list.appendChild(card);
     });
   }
+
+  // ================= 自動 reload (讀返 data.js 最新內容) =================
+  setInterval(() => location.reload(), 60000);
 </script>
 
 </body>
