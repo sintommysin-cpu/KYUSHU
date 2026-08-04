@@ -382,7 +382,12 @@
   setInterval(() => { if (mapInited) loadEarthquakes(); }, 5 * 60 * 1000);
 
   // ================= 酒店邏輯 =================
-  function daysBetween(a, b){ return Math.round((new Date(b) - new Date(a)) / 86400000); }
+  function parseLocalDate(str){
+    // "2026-09-13" 呢種格式, 手動拆開先起local date, 避免俾瀏覽器當UTC處理搞錯日子
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function daysBetween(a, b){ return Math.round((parseLocalDate(b) - parseLocalDate(a)) / 86400000); }
 
   function renderHotels(){
     document.getElementById('hotelSynced').textContent = '更新於: ' + HOTELS.last_updated;
@@ -391,8 +396,8 @@
     const now = new Date(); now.setHours(0,0,0,0);
 
     HOTELS.items.forEach(hh => {
-      const checkin = new Date(hh.checkin);
-      const checkout = new Date(hh.checkout);
+      const checkin = parseLocalDate(hh.checkin);
+      const checkout = parseLocalDate(hh.checkout);
       const isCurrent = now >= checkin && now < checkout;
       const nights = daysBetween(hh.checkin, hh.checkout);
       const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(hh.address);
