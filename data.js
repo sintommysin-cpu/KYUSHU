@@ -41,12 +41,12 @@ const HOTELS = {
     {
       "checkin": "2026-09-16",
       "checkout": "2026-09-17",
-      "city": "阿蘇",
-      "hotel_name": "THE STILL HOTEL",
-      "address": "149-2 Muro, Ozu, Kikuchi District, Kumamoto 869-1235, Japan",
-      "lat": 32.8781399,
-      "lng": 130.8663223,
-      "place_id": "ChIJXSUWYQDlQDUR6BDIWhNBiWU",
+      "city": "別府",
+      "hotel_name": "Grandvrio Hotel Beppuwan Wakura",
+      "address": "1780-1 Hiramichi, Hiji, Hayami District, Oita 879-1508, Japan",
+      "lat": 33.3497933,
+      "lng": 131.4981116,
+      "place_id": "ChIJFUFE8QgdRDURaAlzEQA4KEU",
       "confirmation": "",
       "note": ""
     },
