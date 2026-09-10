@@ -441,7 +441,9 @@
       const checkout = parseLocalDate(hh.checkout);
       const isCurrent = now >= checkin && now < checkout;
       const nights = daysBetween(hh.checkin, hh.checkout);
-      const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(hh.address);
+      const mapUrl = (hh.lat && hh.lng)
+        ? `https://www.google.com/maps/search/?api=1&query=${hh.lat},${hh.lng}${hh.place_id ? '&query_place_id=' + hh.place_id : ''}`
+        : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(hh.address);
 
       const card = document.createElement('a');
       card.href = mapUrl; card.target = '_blank'; card.rel = 'noopener';

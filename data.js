@@ -20,6 +20,9 @@ const HOTELS = {
       "city": "博多",
       "hotel_name": "Hotel Oriental Express Fukuoka Nakasu Kawabata",
       "address": "6-26 Tenyamachi, Hakata Ward, Fukuoka, 812-0025, Japan",
+      "lat": 33.5963489,
+      "lng": 130.4089457,
+      "place_id": "ChIJY87E866RQTURJFzymHniFSs",
       "confirmation": "",
       "note": ""
     },
@@ -29,6 +32,9 @@ const HOTELS = {
       "city": "由布院",
       "hotel_name": "Yufudake Ichibo no Yado Kirara",
       "address": "547-1 Yufuincho Kawaminami, Yufu, Oita 879-5103, Japan",
+      "lat": 33.2545557,
+      "lng": 131.3627176,
+      "place_id": "ChIJn7KgWNmtRjURMCAhwyV5zxU",
       "confirmation": "",
       "note": ""
     },
@@ -38,6 +44,9 @@ const HOTELS = {
       "city": "阿蘇",
       "hotel_name": "THE STILL HOTEL",
       "address": "149-2 Muro, Ozu, Kikuchi District, Kumamoto 869-1235, Japan",
+      "lat": 32.8781399,
+      "lng": 130.8663223,
+      "place_id": "ChIJXSUWYQDlQDUR6BDIWhNBiWU",
       "confirmation": "",
       "note": ""
     },
@@ -47,6 +56,9 @@ const HOTELS = {
       "city": "宮崎",
       "hotel_name": "Prince Smart Inn Miyazaki",
       "address": "2 Chome-4-17 Tachibanadorinishi, Miyazaki, 880-0001, Japan",
+      "lat": 31.9111526,
+      "lng": 131.4219038,
+      "place_id": "ChIJA2HUYq63ODURFSMyuuG-G4Y",
       "confirmation": "",
       "note": ""
     },
@@ -56,6 +68,9 @@ const HOTELS = {
       "city": "小倉",
       "hotel_name": "Arukuinkurosaki PLUS",
       "address": "2 Chome-10-2 Kurosaki, Yahatanishi Ward, Kitakyushu, Fukuoka 806-0021, Japan",
+      "lat": 33.8641527,
+      "lng": 130.7663071,
+      "place_id": "ChIJ_89N4-fIQzURZhvwaoKvTOg",
       "confirmation": "",
       "note": ""
     },
@@ -65,6 +80,9 @@ const HOTELS = {
       "city": "博多",
       "hotel_name": "CROSS life Hakata Yanagibashi",
       "address": "1 Chome-6-5 Haruyoshi, Chuo Ward, Fukuoka, 810-0003, Japan",
+      "lat": 33.5829756,
+      "lng": 130.4079518,
+      "place_id": "ChIJ2-I6rpmRQTURPoT9pggNqoQ",
       "confirmation": "",
       "note": ""
     }
