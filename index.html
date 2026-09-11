@@ -210,6 +210,20 @@
   .bg-log-amt{ font-family:ui-monospace,'SF Mono',Consolas,monospace; font-weight:700; }
   .bg-log-del{ color:var(--red); cursor:pointer; margin-left:12px; font-size:14px; }
 
+  /* ---- Home icon grid ---- */
+  .home-grid-title{ font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin:28px 4px 12px; width:100%; max-width:400px; text-align:center; }
+  .home-grid{
+    width:100%; max-width:400px; display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:10px;
+  }
+  .home-icon{
+    background:var(--panel); border:1px solid var(--panel-edge); border-radius:16px;
+    padding:18px 6px 12px; display:flex; flex-direction:column; align-items:center; gap:8px;
+    cursor:pointer; transition:transform .1s, border-color .15s;
+  }
+  .home-icon:active{ transform:scale(0.95); }
+  .home-icon-emoji{ font-size:28px; }
+  .home-icon-label{ font-size:11px; color:var(--muted); font-weight:600; }
+
   @media (max-width:380px){
     .flip{ min-width:46px; font-size:24px; padding:7px 3px; }
     .colon{ font-size:20px; }
@@ -248,6 +262,16 @@
   <div class="listwrap">
     <div class="listwrap-title">全程航班</div>
     <div id="rows"></div>
+  </div>
+
+  <div class="home-grid-title">其他功能</div>
+  <div class="home-grid">
+    <div class="home-icon" data-goto="quake"><div class="home-icon-emoji">🌏</div><div class="home-icon-label">地震</div></div>
+    <div class="home-icon" data-goto="hotel"><div class="home-icon-emoji">🏨</div><div class="home-icon-label">酒店</div></div>
+    <div class="home-icon" data-goto="itin"><div class="home-icon-emoji">📋</div><div class="home-icon-label">行程</div></div>
+    <div class="home-icon" data-goto="pack"><div class="home-icon-emoji">🎒</div><div class="home-icon-label">打包</div></div>
+    <div class="home-icon" data-goto="wx"><div class="home-icon-emoji">🌤️</div><div class="home-icon-label">天氣</div></div>
+    <div class="home-icon" data-goto="budget"><div class="home-icon-emoji">💰</div><div class="home-icon-label">預算</div></div>
   </div>
 </div>
 
@@ -364,6 +388,14 @@
       if (targetBtn) targetBtn.click();
     }
   }catch(e){}
+
+  // 主頁大icon卡, 撳落去等同撳返上面個分頁掣
+  document.querySelectorAll('.home-icon').forEach(el => {
+    el.addEventListener('click', () => {
+      const targetBtn = document.querySelector(`.tab-btn[data-tab="${el.dataset.goto}"]`);
+      if (targetBtn) targetBtn.click();
+    });
+  });
 
   // ================= 倒數邏輯 =================
   function diffParts(ms){
