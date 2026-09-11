@@ -149,6 +149,19 @@
   .pack-label{ font-size:13px; line-height:1.4; }
   .pack-note{ font-size:10px; color:var(--muted); opacity:.5; text-align:center; margin-top:4px; max-width:640px; }
 
+  /* ---- Weather ---- */
+  .wx-card{
+    width:100%; max-width:640px; background:var(--panel); border:1px solid var(--panel-edge);
+    border-radius:14px; padding:16px 18px; margin-bottom:12px;
+  }
+  .wx-city{ font-size:14px; font-weight:700; color:var(--teal); margin-bottom:10px; }
+  .wx-days{ display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+  .wx-day{ flex-shrink:0; width:66px; text-align:center; background:var(--bg); border-radius:10px; padding:10px 4px; }
+  .wx-day-label{ font-size:10px; color:var(--muted); margin-bottom:4px; }
+  .wx-day-icon{ font-size:20px; margin-bottom:4px; }
+  .wx-day-hi{ font-size:13px; font-weight:700; color:var(--amber); }
+  .wx-day-lo{ font-size:11px; color:var(--muted); }
+
   @media (max-width:380px){
     .flip{ min-width:46px; font-size:24px; padding:7px 3px; }
     .colon{ font-size:20px; }
@@ -167,6 +180,7 @@
   <button class="tab-btn" data-tab="hotel">🏨 酒店</button>
   <button class="tab-btn" data-tab="itin">📋 行程</button>
   <button class="tab-btn" data-tab="pack">🎒 打包</button>
+  <button class="tab-btn" data-tab="wx">🌤️ 天氣</button>
 </nav>
 
 <!-- ===== 倒數 Tab ===== -->
@@ -219,6 +233,14 @@
   <div class="pack-note">狀態儲存喺呢部裝置嘅瀏覽器度, 離線都得; 換部機或者清瀏覽器資料會reset</div>
 </div>
 
+<!-- ===== 天氣 Tab ===== -->
+<div class="tab-content" id="tab-wx">
+  <div id="wxList" style="width:100%; display:flex; flex-direction:column; align-items:center;">
+    <div class="eq-empty">載入中…</div>
+  </div>
+  <div class="footnote">資料來源: Open-Meteo (免費公開 API) · 7日預報 · 每小時自動更新</div>
+</div>
+
 <script src="data.js"></script>
 <script>
   // ================= 通用 =================
@@ -238,6 +260,7 @@
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
   let mapInited = false;
+  let wxLoaded = false;
 
   const ACTIVE_TAB_KEY = 'travel-hub-active-tab';
 
@@ -255,6 +278,9 @@
       }
       if (btn.dataset.tab === 'itin'){
         loadItinerary();
+      }
+      if (btn.dataset.tab === 'wx'){
+        if (!wxLoaded){ wxLoaded = true; loadWeather(); }
       }
     });
   });
@@ -710,6 +736,64 @@
 
   // ================= 自動 reload (讀返 data.js 最新內容) =================
   setInterval(() => location.reload(), 60000);
+
+  // ================= 天氣 (Open-Meteo, 免key) =================
+  // 想加/減城市, 喺呢個陣列改就得
+  const WX_CITIES = [
+    { name:'博多/福岡', lat:33.5904, lon:130.4017 },
+    { name:'由布院',    lat:33.2646, lon:131.3667 },
+    { name:'別府',      lat:33.2846, lon:131.4913 },
+    { name:'宮崎',      lat:31.9111, lon:131.4239 },
+    { name:'北九州/小倉', lat:33.8834, lon:130.8751 },
+  ];
+  const WX_ICON = {
+    0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',
+    51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',
+    71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',
+    95:'⛈️',96:'⛈️',99:'⛈️'
+  };
+
+  async function loadWeather(){
+    const list = document.getElementById('wxList');
+    list.innerHTML = '';
+    for (const city of WX_CITIES){
+      try{
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo&forecast_days=7`;
+        const res = await fetch(url);
+        const data = await res.json();
+        renderWxCard(city.name, data.daily);
+      }catch(e){
+        const errCard = document.createElement('div');
+        errCard.className = 'wx-card';
+        errCard.innerHTML = `<div class="wx-city">${city.name}</div><div class="eq-empty">無法載入</div>`;
+        list.appendChild(errCard);
+      }
+    }
+  }
+
+  function renderWxCard(cityName, daily){
+    const list = document.getElementById('wxList');
+    const card = document.createElement('div');
+    card.className = 'wx-card';
+    let daysHtml = '';
+    daily.time.forEach((dateStr, i) => {
+      const d = new Date(dateStr + 'T00:00:00');
+      const label = d.toLocaleDateString('zh-HK', {month:'2-digit', day:'2-digit', weekday:'short'});
+      const icon = WX_ICON[daily.weathercode[i]] || '🌡️';
+      const hi = Math.round(daily.temperature_2m_max[i]);
+      const lo = Math.round(daily.temperature_2m_min[i]);
+      daysHtml += `
+        <div class="wx-day">
+          <div class="wx-day-label">${label}</div>
+          <div class="wx-day-icon">${icon}</div>
+          <div class="wx-day-hi">${hi}°</div>
+          <div class="wx-day-lo">${lo}°</div>
+        </div>`;
+    });
+    card.innerHTML = `<div class="wx-city">${cityName}</div><div class="wx-days">${daysHtml}</div>`;
+    list.appendChild(card);
+  }
+  setInterval(() => { if (wxLoaded) loadWeather(); }, 60 * 60 * 1000);
 </script>
 
 </body>
