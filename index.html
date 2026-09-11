@@ -33,7 +33,7 @@
   .clock{ font-family:ui-monospace,'SF Mono',Consolas,monospace; font-size:13px; color:var(--muted); margin-bottom:16px; }
 
   /* ---- Tabs ---- */
-  .tabs{ display:flex; gap:8px; margin-bottom:26px; background:var(--panel); border:1px solid var(--panel-edge); border-radius:12px; padding:5px; }
+  .tabs{ display:none; gap:8px; margin-bottom:26px; background:var(--panel); border:1px solid var(--panel-edge); border-radius:12px; padding:5px; }
   .tab-btn{
     border:none; background:transparent; color:var(--muted); font-size:13px; font-weight:600;
     padding:9px 18px; border-radius:8px; cursor:pointer; transition:background .2s, color .2s;
@@ -223,6 +223,9 @@
   .home-icon:active{ transform:scale(0.95); }
   .home-icon-emoji{ font-size:28px; }
   .home-icon-label{ font-size:11px; color:var(--muted); font-weight:600; }
+  .home-icon.current{ border-color:var(--teal); }
+  .home-icon.current .home-icon-label{ color:var(--teal); }
+  .home-grid-slot-label{ font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:10px; text-align:center; }
 
   @media (max-width:380px){
     .flip{ min-width:46px; font-size:24px; padding:7px 3px; }
@@ -264,19 +267,12 @@
     <div id="rows"></div>
   </div>
 
-  <div class="home-grid-title">其他功能</div>
-  <div class="home-grid">
-    <div class="home-icon" data-goto="quake"><div class="home-icon-emoji">🌏</div><div class="home-icon-label">地震</div></div>
-    <div class="home-icon" data-goto="hotel"><div class="home-icon-emoji">🏨</div><div class="home-icon-label">酒店</div></div>
-    <div class="home-icon" data-goto="itin"><div class="home-icon-emoji">📋</div><div class="home-icon-label">行程</div></div>
-    <div class="home-icon" data-goto="pack"><div class="home-icon-emoji">🎒</div><div class="home-icon-label">打包</div></div>
-    <div class="home-icon" data-goto="wx"><div class="home-icon-emoji">🌤️</div><div class="home-icon-label">天氣</div></div>
-    <div class="home-icon" data-goto="budget"><div class="home-icon-emoji">💰</div><div class="home-icon-label">預算</div></div>
-  </div>
+  <div class="home-grid-slot" data-tab="countdown"></div>
 </div>
 
 <!-- ===== 地震 Tab ===== -->
 <div class="tab-content" id="tab-quake">
+  <div class="home-grid-slot" data-tab="quake"></div>
   <div id="map"></div>
   <div class="eq-list" id="eqList"><div class="eq-empty">載入中…</div></div>
   <div class="footnote">資料來源: USGS 全球地震監測 (免費公開 API) · 每5分鐘自動更新 · 過去7日 M2.5+</div>
@@ -284,12 +280,14 @@
 
 <!-- ===== 酒店 Tab ===== -->
 <div class="tab-content" id="tab-hotel">
+  <div class="home-grid-slot" data-tab="hotel"></div>
   <div class="hotel-grid" id="hotelGrid"></div>
   <div class="footnote" id="hotelSynced"></div>
 </div>
 
 <!-- ===== 行程 Tab (即時讀 Google Sheet) ===== -->
 <div class="tab-content" id="tab-itin">
+  <div class="home-grid-slot" data-tab="itin"></div>
   <div id="itinList" style="width:100%; display:flex; flex-direction:column; align-items:center;">
     <div class="eq-empty">載入中…</div>
   </div>
@@ -298,6 +296,7 @@
 
 <!-- ===== 打包 Tab ===== -->
 <div class="tab-content" id="tab-pack">
+  <div class="home-grid-slot" data-tab="pack"></div>
   <div class="pack-progress">
     <div class="pack-progress-track"><div class="pack-progress-fill" id="packFill" style="width:0%"></div></div>
     <div class="pack-progress-text" id="packText">0 / 0</div>
@@ -308,6 +307,7 @@
 
 <!-- ===== 天氣 Tab ===== -->
 <div class="tab-content" id="tab-wx">
+  <div class="home-grid-slot" data-tab="wx"></div>
   <div id="wxList" style="width:100%; display:flex; flex-direction:column; align-items:center;">
     <div class="eq-empty">載入中…</div>
   </div>
@@ -316,6 +316,7 @@
 
 <!-- ===== 預算 Tab ===== -->
 <div class="tab-content" id="tab-budget">
+  <div class="home-grid-slot" data-tab="budget"></div>
   <div class="bg-summary" id="bgSummary"></div>
   <div id="bgCats" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
 
@@ -389,13 +390,36 @@
     }
   }catch(e){}
 
-  // 主頁大icon卡, 撳落去等同撳返上面個分頁掣
-  document.querySelectorAll('.home-icon').forEach(el => {
-    el.addEventListener('click', () => {
-      const targetBtn = document.querySelector(`.tab-btn[data-tab="${el.dataset.goto}"]`);
-      if (targetBtn) targetBtn.click();
+  // 主頁大icon卡, 撳落去等同撳返個分頁掣 (每頁自己嗰個slot都會自動填晒呢個grid)
+  const NAV_ITEMS = [
+    { key:'countdown', emoji:'✈️', label:'倒數' },
+    { key:'quake',     emoji:'🌏', label:'地震' },
+    { key:'hotel',     emoji:'🏨', label:'酒店' },
+    { key:'itin',      emoji:'📋', label:'行程' },
+    { key:'pack',      emoji:'🎒', label:'打包' },
+    { key:'wx',        emoji:'🌤️', label:'天氣' },
+    { key:'budget',    emoji:'💰', label:'預算' },
+  ];
+
+  function renderAllHomeGrids(){
+    document.querySelectorAll('.home-grid-slot').forEach(slot => {
+      const currentTab = slot.dataset.tab;
+      const iconsHtml = NAV_ITEMS.map(item => `
+        <div class="home-icon${item.key === currentTab ? ' current' : ''}" data-goto="${item.key}">
+          <div class="home-icon-emoji">${item.emoji}</div>
+          <div class="home-icon-label">${item.label}</div>
+        </div>`).join('');
+      slot.innerHTML = `<div class="home-grid-slot-label">導航</div><div class="home-grid">${iconsHtml}</div>`;
     });
-  });
+
+    document.querySelectorAll('.home-icon').forEach(el => {
+      el.addEventListener('click', () => {
+        const targetBtn = document.querySelector(`.tab-btn[data-tab="${el.dataset.goto}"]`);
+        if (targetBtn) targetBtn.click();
+      });
+    });
+  }
+  renderAllHomeGrids();
 
   // ================= 倒數邏輯 =================
   function diffParts(ms){
