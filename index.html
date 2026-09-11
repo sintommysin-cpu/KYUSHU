@@ -130,6 +130,11 @@
   .entry-note{ font-size:11px; color:var(--muted); margin-top:2px; white-space:pre-line; }
   .entry-hotel{ font-size:11px; color:var(--teal); margin-top:4px; }
   .entry-hotel::before{ content:"🏨 "; }
+  .entry-parking{
+    display:inline-block; font-size:11px; color:var(--teal); margin-top:5px;
+    padding:3px 10px; border:1px solid var(--panel-edge); border-radius:20px; text-decoration:none;
+  }
+  .entry-parking::before{ content:"🅿️ "; }
 
   /* ---- Packing checklist ---- */
   .pack-progress{ width:100%; max-width:640px; margin-bottom:20px; }
@@ -676,6 +681,33 @@
     }
   }
 
+  function extractParking(note){
+    if (!note) return null;
+    const m = note.match(/PARKING[:：]\s*([^\n]+)/i);
+    return m ? m[1].trim() : null;
+  }
+
+  // 幫呢批冇喺表度寫低PARKING嘅景點, 用Google Places查實嘅附近停車場
+  // 每個item: keyword用嚟同"地點/景點"欄配對(只要地點文字包含keyword就中)
+  const PARKING_LOOKUP = [
+    { keyword:'青島神社', name:'Aoshima Parking Lot', lat:31.8001771, lng:131.4687302, place_id:'ChIJIxnjqsTHODURs1BW0qPQjYk' },
+    { keyword:'鵜戸神宮', name:'鵜戸神宮観光駐車場', lat:31.6476745, lng:131.4619499, place_id:'ChIJ_eL_YF3aODURw0_skePPcs4' },
+    { keyword:'Sun Messe', name:'Sun Messe Nichinan Moaizo Parking Lot', lat:31.6635432, lng:131.4605803, place_id:'ChIJB1HCdQDbODUR4XxAC6bgudA' },
+    { keyword:'草千里', name:'Kusasenrigahama Parking Lot (免費)', lat:32.8851525, lng:131.0505139, place_id:'ChIJhzYnKgXZQDUR7_IlyCv8T2Q' },
+    { keyword:'大觀峰', name:'大観峰 第1駐車場 (免費)', lat:32.9986801, lng:131.0712437, place_id:'ChIJ82LgUaMlQTURh91B1QkK4lQ' },
+    { keyword:'長者原', name:'Chojabaru Parking Lot (免費)', lat:33.1195931, lng:131.2289677, place_id:'ChIJoeuIGyg1QTURZbSPPN65XM4' },
+    { keyword:'日向岬', name:'Cape Hyuga Umagase Parking Lot (免費)', lat:32.4227282, lng:131.6841892, place_id:'ChIJL5VDxvkTRzURRoMqYOqebrE' },
+    { keyword:'狭霧台', name:'狭霧台展望所 (自設停車位)', lat:33.2600229, lng:131.3825262, place_id:'ChIJdSPGWdetRjURtsvNy-yAHwE' },
+    { keyword:'豆田町', name:'市営豆田西駐車場 (免費)', lat:33.3257721, lng:130.9338995, place_id:'ChIJR58hUSFqQTUR4VIrSK08ZWM' },
+  ];
+
+  function lookupParking(placeText){
+    if (!placeText) return null;
+    const hit = PARKING_LOOKUP.find(p => placeText.includes(p.keyword));
+    if (!hit) return null;
+    return { name: hit.name, url: `https://www.google.com/maps/search/?api=1&query=${hit.lat},${hit.lng}&query_place_id=${hit.place_id}` };
+  }
+
   function renderItinerary(rows){
     const list = document.getElementById('itinList');
     list.innerHTML = '';
@@ -719,6 +751,15 @@
       card.className = 'day-card';
       let entriesHtml = '';
       d.entries.forEach(en => {
+        const parkingName = extractParking(en.note);
+        let parkingUrl = parkingName ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(parkingName) : null;
+        let parkingLabel = parkingName ? '開停車場地圖' : null;
+
+        if (!parkingUrl){
+          const found = lookupParking(en.place);
+          if (found){ parkingUrl = found.url; parkingLabel = found.name; }
+        }
+
         entriesHtml += `
           <div class="entry">
             <div class="entry-time">${en.time}</div>
@@ -726,6 +767,7 @@
               <div class="entry-place">${en.place}</div>
               ${en.note ? '<div class="entry-note">' + en.note + '</div>' : ''}
               ${en.hotel ? '<div class="entry-hotel">' + en.hotel + '</div>' : ''}
+              ${parkingUrl ? '<a class="entry-parking" href="' + parkingUrl + '" target="_blank" rel="noopener">' + parkingLabel + '</a>' : ''}
             </div>
           </div>`;
       });
