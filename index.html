@@ -297,10 +297,15 @@
 
   <div class="bg-form">
     <select id="bgCatSelect"></select>
+    <select id="bgCurrency" style="flex:0 0 70px;">
+      <option value="CAD">CAD</option>
+      <option value="JPY">JPY ¥</option>
+    </select>
     <input type="number" id="bgAmount" placeholder="金額" step="0.01">
     <input type="text" id="bgNote" placeholder="備註 (例如: 午餐)">
     <button id="bgAddBtn">記低</button>
   </div>
+  <div class="footnote" id="bgFxNote"></div>
 
   <div class="bg-log-title">近期記錄</div>
   <div id="bgLog" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
@@ -900,6 +905,22 @@
 
   // ================= 預算 =================
   const BUDGET_STORAGE_KEY = 'kyushu-budget-log-v1';
+  let jpyToCadRate = null; // 每次開個分頁攞一次即時匯率, 快取住
+
+  async function getJpyCadRate(){
+    if (jpyToCadRate) return jpyToCadRate;
+    try{
+      const res = await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
+      const data = await res.json();
+      jpyToCadRate = data.rates.CAD;
+    }catch(e){
+      jpyToCadRate = 0.009; // 攞唔到就用返個大約後備數, 唔會擋住你記數
+    }
+    document.getElementById('bgFxNote').textContent = jpyToCadRate
+      ? `即時匯率: 1 JPY ≈ ${jpyToCadRate.toFixed(5)} CAD`
+      : '';
+    return jpyToCadRate;
+  }
 
   function loadExpenses(){
     try{ return JSON.parse(localStorage.getItem(BUDGET_STORAGE_KEY) || '[]'); }
@@ -913,13 +934,26 @@
     const sel = document.getElementById('bgCatSelect');
     sel.innerHTML = BUDGET.categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
 
-    document.getElementById('bgAddBtn').addEventListener('click', () => {
+    document.getElementById('bgAddBtn').addEventListener('click', async () => {
       const cat = sel.value;
-      const amt = parseFloat(document.getElementById('bgAmount').value);
+      const currency = document.getElementById('bgCurrency').value;
+      const rawAmt = parseFloat(document.getElementById('bgAmount').value);
       const note = document.getElementById('bgNote').value.trim();
-      if (!amt || amt <= 0) return;
+      if (!rawAmt || rawAmt <= 0) return;
+
+      let amountCad = rawAmt;
+      let origJpy = null;
+      if (currency === 'JPY'){
+        const rate = await getJpyCadRate();
+        amountCad = rawAmt * rate;
+        origJpy = rawAmt;
+      }
+
       const expenses = loadExpenses();
-      expenses.unshift({ id: Date.now(), cat, amount: amt, note, date: new Date().toISOString().slice(0,10) });
+      expenses.unshift({
+        id: Date.now(), cat, amount: amountCad, origJpy,
+        note, date: new Date().toISOString().slice(0,10)
+      });
       saveExpenses(expenses);
       document.getElementById('bgAmount').value = '';
       document.getElementById('bgNote').value = '';
@@ -973,8 +1007,9 @@
         const catInfo = BUDGET.categories.find(c => c.key === e.cat) || { icon:'💵', label:e.cat };
         const item = document.createElement('div');
         item.className = 'bg-log-item';
+        const jpyTag = e.origJpy ? ` · ¥${e.origJpy.toLocaleString()}` : '';
         item.innerHTML = `
-          <div class="bg-log-left">${catInfo.icon} <b>${catInfo.label}</b>${e.note ? ' · ' + e.note : ''} · ${e.date}</div>
+          <div class="bg-log-left">${catInfo.icon} <b>${catInfo.label}</b>${e.note ? ' · ' + e.note : ''}${jpyTag} · ${e.date}</div>
           <div style="display:flex; align-items:center;">
             <span class="bg-log-amt">$${e.amount.toFixed(2)}</span>
             <span class="bg-log-del" data-id="${e.id}">✕</span>
@@ -993,6 +1028,7 @@
 
   initBudgetForm();
   renderBudget();
+  getJpyCadRate();
 </script>
 
 </body>

@@ -18,9 +18,9 @@ const BUDGET = {
     { key:'flight',  label:'機票', icon:'✈️', amount:2444 },
     { key:'stay',    label:'住宿', icon:'🏨', amount:1146.86 },
     { key:'transport', label:'交通', icon:'🚗', amount:1200 },
-    { key:'food',    label:'飲食', icon:'🍽️', amount:1005 },
-    { key:'misc',    label:'雜費', icon:'📎', amount:1012 },
-    { key:'shopping', label:'購物', icon:'🛍️', amount:250 },
+    { key:'food',    label:'飲食', icon:'🍽️', amount:1050 },
+    { key:'misc',    label:'雜費', icon:'📎', amount:767 },
+    { key:'shopping', label:'購物', icon:'🛍️', amount:450 },
   ]
 };
 
