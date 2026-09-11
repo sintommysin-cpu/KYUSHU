@@ -9,6 +9,22 @@ const LEGS = [
   { code:'HX',   from:'HKG', to:'YVR', date:new Date(2026,8,28,22,55), note:'約11h20m' },
 ];
 
+// ---- 預算 (CAD, 兩人合計) ----
+// amount = 預算上限, 你可以隨時改呢啲數字
+const BUDGET = {
+  currency: 'CAD',
+  people: 2,
+  categories: [
+    { key:'flight',  label:'機票', icon:'✈️', amount:2444 },
+    { key:'stay',    label:'住宿', icon:'🏨', amount:1146.86 },
+    { key:'transport', label:'交通', icon:'🚗', amount:1200 },
+    { key:'food',    label:'飲食', icon:'🍽️', amount:1005 },
+    { key:'activity', label:'活動', icon:'🎫', amount:110 },
+    { key:'misc',    label:'雜費', icon:'📎', amount:902 },
+    { key:'shopping', label:'購物', icon:'🛍️', amount:250 },
+  ]
+};
+
 // ---- 酒店行程 ----
 const HOTELS = {
   "trip_name": "九州自駕 2026",

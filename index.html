@@ -167,6 +167,49 @@
   .wx-day-hi{ font-size:13px; font-weight:700; color:var(--amber); }
   .wx-day-lo{ font-size:11px; color:var(--muted); }
 
+  /* ---- Budget ---- */
+  .bg-summary{
+    width:100%; max-width:640px; background:var(--panel); border:1px solid var(--panel-edge);
+    border-radius:14px; padding:20px 24px; margin-bottom:16px; text-align:center;
+  }
+  .bg-summary-total{ font-family:ui-monospace,'SF Mono',Consolas,monospace; font-size:28px; font-weight:700; }
+  .bg-summary-sub{ font-size:12px; color:var(--muted); margin-top:4px; }
+  .bg-cat{
+    width:100%; max-width:640px; background:var(--panel); border:1px solid var(--panel-edge);
+    border-radius:12px; padding:14px 18px; margin-bottom:8px;
+  }
+  .bg-cat-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .bg-cat-name{ font-size:13px; font-weight:600; }
+  .bg-cat-amt{ font-size:12px; font-family:ui-monospace,'SF Mono',Consolas,monospace; color:var(--muted); }
+  .bg-cat-amt b{ color:var(--text); }
+  .bg-bar-track{ width:100%; height:6px; border-radius:4px; background:var(--panel-edge); overflow:hidden; }
+  .bg-bar-fill{ height:100%; border-radius:4px; background:var(--green); transition:width .3s; }
+  .bg-bar-fill.over{ background:var(--red); }
+  .bg-form{
+    width:100%; max-width:640px; background:var(--panel); border:1px solid var(--panel-edge);
+    border-radius:14px; padding:16px 18px; margin:16px 0; display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .bg-form select, .bg-form input{
+    background:var(--bg); border:1px solid var(--panel-edge); border-radius:8px; color:var(--text);
+    padding:8px 10px; font-size:13px; font-family:inherit;
+  }
+  .bg-form select{ flex:1; min-width:90px; }
+  .bg-form input[type=number]{ width:90px; }
+  .bg-form input[type=text]{ flex:2; min-width:100px; }
+  .bg-form button{
+    background:var(--teal); color:#04211d; border:none; border-radius:8px; padding:8px 16px;
+    font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .bg-log-title{ font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin:6px 4px 8px; width:100%; max-width:640px; }
+  .bg-log-item{
+    width:100%; max-width:640px; display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--panel-edge); border-radius:10px; padding:10px 16px; margin-bottom:6px; font-size:12px;
+  }
+  .bg-log-left{ color:var(--muted); }
+  .bg-log-left b{ color:var(--text); font-weight:600; }
+  .bg-log-amt{ font-family:ui-monospace,'SF Mono',Consolas,monospace; font-weight:700; }
+  .bg-log-del{ color:var(--red); cursor:pointer; margin-left:12px; font-size:14px; }
+
   @media (max-width:380px){
     .flip{ min-width:46px; font-size:24px; padding:7px 3px; }
     .colon{ font-size:20px; }
@@ -186,6 +229,7 @@
   <button class="tab-btn" data-tab="itin">📋 行程</button>
   <button class="tab-btn" data-tab="pack">🎒 打包</button>
   <button class="tab-btn" data-tab="wx">🌤️ 天氣</button>
+  <button class="tab-btn" data-tab="budget">💰 預算</button>
 </nav>
 
 <!-- ===== 倒數 Tab ===== -->
@@ -244,6 +288,23 @@
     <div class="eq-empty">載入中…</div>
   </div>
   <div class="footnote">資料來源: Open-Meteo (免費公開 API) · 7日預報 · 每小時自動更新</div>
+</div>
+
+<!-- ===== 預算 Tab ===== -->
+<div class="tab-content" id="tab-budget">
+  <div class="bg-summary" id="bgSummary"></div>
+  <div id="bgCats" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
+
+  <div class="bg-form">
+    <select id="bgCatSelect"></select>
+    <input type="number" id="bgAmount" placeholder="金額" step="0.01">
+    <input type="text" id="bgNote" placeholder="備註 (例如: 午餐)">
+    <button id="bgAddBtn">記低</button>
+  </div>
+
+  <div class="bg-log-title">近期記錄</div>
+  <div id="bgLog" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
+  <div class="pack-note">記錄儲存喺呢部裝置嘅瀏覽器度, 離線都得; 換部機或者清瀏覽器資料會reset</div>
 </div>
 
 <script src="data.js"></script>
@@ -836,6 +897,102 @@
     list.appendChild(card);
   }
   setInterval(() => { if (wxLoaded) loadWeather(); }, 60 * 60 * 1000);
+
+  // ================= 預算 =================
+  const BUDGET_STORAGE_KEY = 'kyushu-budget-log-v1';
+
+  function loadExpenses(){
+    try{ return JSON.parse(localStorage.getItem(BUDGET_STORAGE_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function saveExpenses(arr){
+    try{ localStorage.setItem(BUDGET_STORAGE_KEY, JSON.stringify(arr)); }catch(e){}
+  }
+
+  function initBudgetForm(){
+    const sel = document.getElementById('bgCatSelect');
+    sel.innerHTML = BUDGET.categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
+
+    document.getElementById('bgAddBtn').addEventListener('click', () => {
+      const cat = sel.value;
+      const amt = parseFloat(document.getElementById('bgAmount').value);
+      const note = document.getElementById('bgNote').value.trim();
+      if (!amt || amt <= 0) return;
+      const expenses = loadExpenses();
+      expenses.unshift({ id: Date.now(), cat, amount: amt, note, date: new Date().toISOString().slice(0,10) });
+      saveExpenses(expenses);
+      document.getElementById('bgAmount').value = '';
+      document.getElementById('bgNote').value = '';
+      renderBudget();
+    });
+  }
+
+  function renderBudget(){
+    const expenses = loadExpenses();
+    const spentByCat = {};
+    let totalSpent = 0;
+    expenses.forEach(e => {
+      spentByCat[e.cat] = (spentByCat[e.cat] || 0) + e.amount;
+      totalSpent += e.amount;
+    });
+
+    const totalBudget = BUDGET.categories.reduce((s,c) => s + c.amount, 0);
+    const remaining = totalBudget - totalSpent;
+
+    document.getElementById('bgSummary').innerHTML = `
+      <div class="bg-summary-total" style="color:${remaining >= 0 ? 'var(--green)' : 'var(--red)'}">
+        ${BUDGET.currency} $${remaining.toFixed(2)}
+      </div>
+      <div class="bg-summary-sub">仲剩 (預算 $${totalBudget.toFixed(2)} · 已洗 $${totalSpent.toFixed(2)} · ${BUDGET.people}人合計)</div>
+    `;
+
+    const catsDiv = document.getElementById('bgCats');
+    catsDiv.innerHTML = '';
+    BUDGET.categories.forEach(c => {
+      const spent = spentByCat[c.key] || 0;
+      const pct = Math.min(100, (spent / c.amount) * 100);
+      const over = spent > c.amount;
+      const div = document.createElement('div');
+      div.className = 'bg-cat';
+      div.innerHTML = `
+        <div class="bg-cat-top">
+          <div class="bg-cat-name">${c.icon} ${c.label}</div>
+          <div class="bg-cat-amt"><b>$${spent.toFixed(2)}</b> / $${c.amount.toFixed(2)}</div>
+        </div>
+        <div class="bg-bar-track"><div class="bg-bar-fill ${over ? 'over' : ''}" style="width:${pct}%"></div></div>
+      `;
+      catsDiv.appendChild(div);
+    });
+
+    const logDiv = document.getElementById('bgLog');
+    logDiv.innerHTML = '';
+    if (expenses.length === 0){
+      logDiv.innerHTML = '<div class="eq-empty">仲未記錄過洗費</div>';
+    } else {
+      expenses.slice(0, 15).forEach(e => {
+        const catInfo = BUDGET.categories.find(c => c.key === e.cat) || { icon:'💵', label:e.cat };
+        const item = document.createElement('div');
+        item.className = 'bg-log-item';
+        item.innerHTML = `
+          <div class="bg-log-left">${catInfo.icon} <b>${catInfo.label}</b>${e.note ? ' · ' + e.note : ''} · ${e.date}</div>
+          <div style="display:flex; align-items:center;">
+            <span class="bg-log-amt">$${e.amount.toFixed(2)}</span>
+            <span class="bg-log-del" data-id="${e.id}">✕</span>
+          </div>`;
+        logDiv.appendChild(item);
+      });
+      logDiv.querySelectorAll('.bg-log-del').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = Number(el.dataset.id);
+          saveExpenses(loadExpenses().filter(e => e.id !== id));
+          renderBudget();
+        });
+      });
+    }
+  }
+
+  initBudgetForm();
+  renderBudget();
 </script>
 
 </body>
